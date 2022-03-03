@@ -2,86 +2,57 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/dabfleming/go-redis-pubsub-example/driver/pubsub"
-	"gopkg.in/redis.v2"
 	"log"
 	"time"
+
+	"go_pubsub/driver/pubsub"
+
+	"gopkg.in/redis.v2"
 )
-
-type food struct {
-	Name     string
-	Calories float64
-}
-
-type car struct {
-	Make  string
-	Model string
-}
 
 func main() {
 	var pub *redis.IntCmd
 	var err error
+	var sub_channel string = "rust_channel"
+	var pub_channel string = "go_channel"
 
+	log.SetFlags(log.Lshortfile | log.LstdFlags) // set flags
 	// Create a subscriber
-	_, err = pubsub.NewSubscriber("food", eat)
+	_, err = pubsub.NewSubscriber(sub_channel, handle_msg)
 	if err != nil {
 		log.Println("NewSubscriber() error", err)
 	}
 
-	// Create another subscriber
-	_, err = pubsub.NewSubscriber("cars", drive)
-	if err != nil {
-		log.Println("NewSubscriber() error", err)
-	}
 	log.Print("Subscriptions done. Publishing...")
+	time.Sleep(time.Second)
 
-	// -- Publish some stuf --
-	pub = pubsub.Service.Publish("food", food{"Pizza", 50.1})
-	if err = pub.Err(); err != nil {
-		log.Print("PublishString() error", err)
+	for i := 0; i < 10000; i++ {
+		payload := pubsub.Order{Description: "message from go", Quantity: 0, Index: int32(i)}
+		// -- Publish some stuf --
+		message := pubsub.Message{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+			Channel: pub_channel,
+			Payload: payload,
+		}
+
+		pub = pubsub.Service.Publish(pub_channel, message)
+		if err = pub.Err(); err != nil {
+			log.Print("PublishString() error", err)
+		}
+		_ = pub
+		time.Sleep(2 * time.Second)
 	}
-
-	pub = pubsub.Service.Publish("food", food{"Big Mac", 200})
-	if err = pub.Err(); err != nil {
-		log.Print("PublishString() error", err)
-	}
-
-	pub = pubsub.Service.Publish("cars", car{"Subaru", "Impreza"})
-	if err = pub.Err(); err != nil {
-		log.Print("PublishString() error", err)
-	}
-
-	pub = pubsub.Service.Publish("cars", car{"Tesla", "Model S"})
-	if err = pub.Err(); err != nil {
-		log.Print("PublishString() error", err)
-	}
-	_ = pub
-
-	log.Print("Publishing done. Sleeping...")
 
 	for {
 		time.Sleep(time.Second)
 	}
 }
 
-func eat(channel, payload string) {
-	var f food
-
-	err := json.Unmarshal([]byte(payload), &f)
+func handle_msg(channel, payload string) {
+	var msg pubsub.Message
+	err := json.Unmarshal([]byte(payload), &msg)
 	if err != nil {
 		log.Printf("Unmarshal error: %v", err)
 	}
 
-	log.Printf("Eating a %v.", f.Name)
-}
-
-func drive(channel, payload string) {
-	var c car
-
-	err := json.Unmarshal([]byte(payload), &c)
-	if err != nil {
-		log.Printf("Unmarshal error: %v", err)
-	}
-
-	log.Printf("Driving a %v.", c.Make)
+	log.Printf("subcriber msg is: %v ", msg)
 }

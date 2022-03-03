@@ -1,17 +1,28 @@
 package pubsub
 
 import (
-	"gopkg.in/redis.v2"
+	"fmt"
 	"log"
-	"net"
-	"reflect"
-	"time"
+
+	"gopkg.in/redis.v2"
 )
 
 type Subscriber struct {
 	pubsub   *redis.PubSub
 	channel  string
 	callback processFunc
+}
+
+type Order struct {
+	Description string `json:"description"`
+	Quantity    uint64 `json:"quantity"`
+	Index       int32  `json:"index"`
+}
+
+type Message struct {
+	Id      string `json:"id"`
+	Channel string `json:"channel"`
+	Payload Order  `json:"payload"`
 }
 
 type processFunc func(string, string)
@@ -33,6 +44,7 @@ func NewSubscriber(channel string, fn processFunc) (*Subscriber, error) {
 	}
 
 	// Listen for messages
+	log.Printf("begin to goroute listen....")
 	go s.listen()
 
 	return &s, nil
@@ -54,14 +66,10 @@ func (s *Subscriber) listen() error {
 	var payload string
 
 	for {
-		msg, err := s.pubsub.ReceiveTimeout(time.Second)
+		msg, err := s.pubsub.Receive()
 		if err != nil {
-			if reflect.TypeOf(err) == reflect.TypeOf(&net.OpError{}) && reflect.TypeOf(err.(*net.OpError).Err).String() == "*net.timeoutError" {
-				// Timeout, ignore
-				continue
-			}
-			// Actual error
-			log.Print("Error in ReceiveTimeout()", err)
+			fmt.Printf("try subscribe channel[test_channel] error[%s]\n", err.Error())
+			continue
 		}
 
 		channel = ""
