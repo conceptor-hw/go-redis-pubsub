@@ -1,28 +1,18 @@
 package pubsub
 
 import (
+	"context"
 	"fmt"
 	"log"
 
-	"gopkg.in/redis.v2"
+	"github.com/go-redis/redis/v8"
 )
 
 type Subscriber struct {
 	pubsub   *redis.PubSub
+	ctx      context.Context
 	channel  string
 	callback processFunc
-}
-
-type Order struct {
-	Description string `json:"description"`
-	Quantity    uint64 `json:"quantity"`
-	Index       int32  `json:"index"`
-}
-
-type Message struct {
-	Id      string `json:"id"`
-	Channel string `json:"channel"`
-	Payload Order  `json:"payload"`
 }
 
 type processFunc func(string, string)
@@ -32,7 +22,8 @@ func NewSubscriber(channel string, fn processFunc) (*Subscriber, error) {
 	// TODO Timeout param?
 
 	s := Subscriber{
-		pubsub:   Service.client.PubSub(),
+		pubsub:   nil,
+		ctx:      context.Background(),
 		channel:  channel,
 		callback: fn,
 	}
@@ -53,7 +44,7 @@ func NewSubscriber(channel string, fn processFunc) (*Subscriber, error) {
 func (s *Subscriber) subscribe() error {
 	var err error
 
-	err = s.pubsub.Subscribe(s.channel)
+	s.pubsub = R_client.Subscribe(s.ctx, s.channel)
 	if err != nil {
 		log.Println("Error subscribing to channel.")
 		return err
@@ -62,32 +53,34 @@ func (s *Subscriber) subscribe() error {
 }
 
 func (s *Subscriber) listen() error {
-	var channel string
-	var payload string
+	// var channel string
+	// var payload string
 
 	for {
-		msg, err := s.pubsub.Receive()
+		msg, err := s.pubsub.Receive(s.ctx)
 		if err != nil {
 			fmt.Printf("try subscribe channel[test_channel] error[%s]\n", err.Error())
 			continue
 		}
 
-		channel = ""
-		payload = ""
+		// channel = ""
+		// payload = ""
 
-		switch m := msg.(type) {
+		fmt.Println("recv msg ####", msg)
+		switch msg := msg.(type) {
 		case *redis.Subscription:
-			log.Printf("Subscription Message: %v to channel '%v'. %v total subscriptions.", m.Kind, m.Channel, m.Count)
-			continue
+			fmt.Println("subscribed to", msg.Channel)
+
 		case *redis.Message:
-			channel = m.Channel
-			payload = m.Payload
-		case *redis.PMessage:
-			channel = m.Channel
-			payload = m.Payload
+			fmt.Println("received!!!!", msg.Payload, "from", msg.Channel, "payloadSlice", msg.PayloadSlice)
+			// buf := new(bytes.Buffer)
+			// b := buf.Bytes()
+			// dec := gob.NewDecoder(bytes.NewBuffer(b))
+			// err = dec.Decode(&msg.PayloadSlice)
+
+		default:
+			panic("unreached")
 		}
 
-		// Process the message
-		go s.callback(channel, payload)
 	}
 }
