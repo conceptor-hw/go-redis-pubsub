@@ -1,51 +1,66 @@
 package pubsub
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/go-redis/redis/v8"
 )
 
-var (
-	R_ctx    = context.Background()
-	R_client *redis.Client
+const (
+	SUB_BINARY_CHANNEL           = "binary_channel_prover"            // 订阅来自prover的二进制message的channel
+	PUB_BINARY_CHANNEL           = "binary_channel_schedule"          // 向prover发布二进制meesage的channel
+	SUB_MGT_CHANNEL              = "mgt_channel_prover"               // 订阅来自prover的控制面的message的channel
+	PUB_MGT_CHANNEL              = "mgt_channel_schedule"             // 向prover发布控制面的message的channel
+	SUB_BINARY_CHANNEL_FROM_POOL = "binary_channel_pool"              // 订阅来自pool server的二进制message的channel
+	PUB_BINARY_CHANNEL_FOR_POOL  = "binary_channel_schedule_for_pool" // 向prover发布二进制meesage的channel
+	SUB_MGT_CHANNEL_FROM_POOL    = "mgt_channel_pool"                 // 订阅来自pool server的控制面的message channel
+	PUB_MGT_CHANNEL_FOR_POOL     = "mgt_channel_schedule_for_pool"    // 向pool server发布控制面的message的channel
 )
 
-var pub_channel string = "go_channel"
-var pub_prover_channel string = "prover_sub_channel"
-var pub *redis.IntCmd = nil
-
-type ProverMessage struct {
-	Previous_block_hash string
-	Block_height        uint32
-	Block_timestamp     int64
-	Difficulty_target   uint64
+type PubSub struct {
+	client *redis.Client
+	ctx    context.Context
 }
 
+var Service *PubSub
+var pub *redis.IntCmd = nil
+
 func init() {
-	R_client = redis.NewClient(&redis.Options{
+	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
-	pong, err := R_client.Ping(R_ctx).Result()
+	ctx := context.Background()
+	pong, err := client.Ping(ctx).Result()
 	fmt.Println(pong, err)
-
+	Service = &PubSub{client, ctx}
 }
 
-func PubBinaryData(channel string, data interface{}) error {
-	buffer := new(bytes.Buffer)
-	encoder := gob.NewEncoder(buffer)
-	err := encoder.Encode(data)
-	fmt.Println("binary data is ", buffer.Bytes())
-	err = R_client.Publish(R_ctx, channel, buffer.Bytes()).Err()
+func (ps *PubSub) PubBinaryMsg(channel string, data []byte) error {
+
+	fmt.Println("binary channel", channel)
+	err := ps.client.Publish(ps.ctx, channel, data).Err()
 	if err != nil {
 		return errors.New("publish Data wrong... " + err.Error())
+	}
+	return nil
+}
+
+func (ps *PubSub) PubNormalMsg(channel string, data interface{}) error {
+
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	messageString := string(jsonBytes)
+	err = ps.client.Publish(ps.ctx, channel, messageString).Err()
+	if err != nil {
+		return errors.New("publish normal message wrong... " + err.Error())
 	}
 	return nil
 }
