@@ -1,9 +1,8 @@
 package pubsub
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,6 +25,11 @@ type ProverMessage struct {
 	Difficulty_target   uint64
 }
 
+type ProveSpecMessage struct {
+	Prover_id string
+	Info      string
+}
+
 func init() {
 	R_client = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -38,14 +42,32 @@ func init() {
 
 }
 
-func PubBinaryData(channel string, data interface{}) error {
-	buffer := new(bytes.Buffer)
-	encoder := gob.NewEncoder(buffer)
-	err := encoder.Encode(data)
-	fmt.Println("binary data is ", buffer.Bytes())
-	err = R_client.Publish(R_ctx, channel, buffer.Bytes()).Err()
+// func PubBinaryData(channel string, data interface{}) error {
+
+// 	fmt.Println("======== binnary pub info is ==========", data)
+// 	buffer1 := new(bytes.Buffer)
+// 	encoder1 := gob.NewEncoder(buffer1)
+// 	err := encoder1.Encode(data)
+// 	fmt.Println("binary data is ", buffer1.Bytes())
+
+// 	err = R_client.Publish(R_ctx, channel, buffer1.Bytes()).Err()
+// 	if err != nil {
+// 		return errors.New("publish Data wrong... " + err.Error())
+// 	}
+// 	return nil
+// }
+
+func PubNormalMsg(channel string, data interface{}) error {
+
+	jsonBytes, err := json.Marshal(data)
 	if err != nil {
-		return errors.New("publish Data wrong... " + err.Error())
+		panic(err)
+	}
+	messageString := string(jsonBytes)
+	fmt.Println("messagei is", messageString)
+	err = R_client.Publish(R_ctx, channel, messageString).Err()
+	if err != nil {
+		return errors.New("publish normal message wrong... " + err.Error())
 	}
 	return nil
 }

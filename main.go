@@ -9,8 +9,8 @@ import (
 
 func main() {
 	var err error
-	var sub_channel string = "rust_channel"
-	var pub_channel string = "go_channel"
+	var sub_channel string = "prover_spec_msg_channel_pool"
+	var pub_channel string = "prover_spec_msg_channel_for_pool"
 	// var sub_prover_channel string = "prover_pub_channel"
 
 	log.SetFlags(log.Lshortfile | log.LstdFlags) // set flags
@@ -37,9 +37,9 @@ func main() {
 			Block_timestamp:   0,
 			Difficulty_target: uint64(0),
 		}
-		fmt.Println("publish message ", message)
-
-		err = pubsub.PubBinaryData(pub_channel, message)
+		temp_str := fmt.Sprint(message)
+		pub_info := pubsub.ProveSpecMessage{Prover_id: "abc", Info: temp_str}
+		err = pubsub.PubNormalMsg(pub_channel, pub_info)
 		if err != nil {
 			log.Print("PublishString() error", err)
 		}
