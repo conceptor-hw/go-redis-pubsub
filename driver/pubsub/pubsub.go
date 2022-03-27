@@ -25,11 +25,6 @@ type ProverMessage struct {
 	Difficulty_target   uint64
 }
 
-type ProveSpecMessage struct {
-	Prover_id string
-	Info      string
-}
-
 func init() {
 	R_client = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",

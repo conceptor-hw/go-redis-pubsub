@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -51,10 +52,9 @@ func (s *Subscriber) subscribe() error {
 	}
 	return nil
 }
-
 func (s *Subscriber) listen() error {
-	// var channel string
-	// var payload string
+	var channel string
+	var payload string
 
 	for {
 		msg, err := s.pubsub.Receive(s.ctx)
@@ -63,24 +63,44 @@ func (s *Subscriber) listen() error {
 			continue
 		}
 
-		// channel = ""
-		// payload = ""
+		channel = ""
+		payload = ""
 
-		fmt.Println("recv msg ####", msg)
-		switch msg := msg.(type) {
+		switch m := msg.(type) {
 		case *redis.Subscription:
-			fmt.Println("subscribed to", msg.Channel)
+			fmt.Println("subscribed to", m.Channel)
 
 		case *redis.Message:
-			fmt.Println("received!!!!", msg.Payload, "from", msg.Channel, "payloadSlice", msg.PayloadSlice)
-			// buf := new(bytes.Buffer)
-			// b := buf.Bytes()
-			// dec := gob.NewDecoder(bytes.NewBuffer(b))
-			// err = dec.Decode(&msg.PayloadSlice)
-
+			channel = m.Channel
+			payload = m.Payload
+			handle_msg(channel, payload)
 		default:
 			panic("unreached")
 		}
 
 	}
+}
+
+type ProveSpecMessage struct {
+	Prover_id string
+	Info      string
+}
+
+func handle_msg(channel, payload string) error {
+	fmt.Println("handle message from: ", channel)
+	var pub_channel string = "binary_channel_schedule"
+	switch channel {
+	case "binary_channel_prover":
+		fmt.Println("#####prove#########: ", payload)
+		data := ProveSpecMessage{"ab+1", payload}
+		temp_str := fmt.Sprint(data)
+		binnay_dat := []byte(temp_str)
+		err := R_client.Publish(R_ctx, pub_channel, binnay_dat).Err()
+		if err != nil {
+			return errors.New("publish Data wrong... " + err.Error())
+		}
+	default:
+		fmt.Println("sub channel is wrong ....", channel)
+	}
+	return nil
 }

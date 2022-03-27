@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"go_pubsub/driver/pubsub"
 	"log"
 	"time"
@@ -9,8 +8,8 @@ import (
 
 func main() {
 	var err error
-	var sub_channel string = "prover_spec_msg_channel_pool"
-	var pub_channel string = "prover_spec_msg_channel_for_pool"
+	var sub_channel string = "binary_channel_prover"
+
 	// var sub_prover_channel string = "prover_pub_channel"
 
 	log.SetFlags(log.Lshortfile | log.LstdFlags) // set flags
@@ -32,17 +31,17 @@ func main() {
 	for i := 0; i < 10000; i++ {
 
 		// -- Publish some stuf --
-		message := pubsub.ProverMessage{Previous_block_hash: "191cbbfc488440ce95e9d5d0770d8c65",
-			Block_height:      uint32(0),
-			Block_timestamp:   0,
-			Difficulty_target: uint64(0),
-		}
-		temp_str := fmt.Sprint(message)
-		pub_info := pubsub.ProveSpecMessage{Prover_id: "abc", Info: temp_str}
-		err = pubsub.PubNormalMsg(pub_channel, pub_info)
-		if err != nil {
-			log.Print("PublishString() error", err)
-		}
+		// message := pubsub.ProverMessage{Previous_block_hash: "191cbbfc488440ce95e9d5d0770d8c65",
+		// 	Block_height:      uint32(0),
+		// 	Block_timestamp:   0,
+		// 	Difficulty_target: uint64(0),
+		// }
+		// temp_str := fmt.Sprint(message)
+		// pub_info := pubsub.ProveSpecMessage{Prover_id: "abc", Info: temp_str}
+		// err = pubsub.PubNormalMsg(pub_channel, pub_info)
+		// if err != nil {
+		// 	log.Print("PublishString() error", err)
+		// }
 		time.Sleep(2 * time.Second)
 	}
 
