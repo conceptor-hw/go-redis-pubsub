@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -73,7 +74,7 @@ func (s *Subscriber) listen() error {
 		case *redis.Message:
 			channel = m.Channel
 			payload = m.Payload
-			handle_msg(channel, payload)
+			handle_prover_spec_message(channel, payload)
 		default:
 			panic("unreached")
 		}
@@ -86,21 +87,26 @@ type ProveSpecMessage struct {
 	Info      string
 }
 
-func handle_msg(channel, payload string) error {
-	fmt.Println("handle message from: ", channel)
-	var pub_channel string = "binary_channel_schedule"
-	switch channel {
-	case "binary_channel_prover":
-		fmt.Println("#####prove#########: ", payload)
-		data := ProveSpecMessage{"ab+1", payload}
-		temp_str := fmt.Sprint(data)
-		binnay_dat := []byte(temp_str)
-		err := R_client.Publish(R_ctx, pub_channel, binnay_dat).Err()
-		if err != nil {
-			return errors.New("publish Data wrong... " + err.Error())
-		}
-	default:
-		fmt.Println("sub channel is wrong ....", channel)
+func PubProSpecMsg(channel string, data interface{}) error {
+
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	messageString := string(jsonBytes)
+	fmt.Println("messagei is", messageString)
+	err = R_client.Publish(R_ctx, channel, messageString).Err()
+	if err != nil {
+		return errors.New("publish normal message wrong... " + err.Error())
 	}
 	return nil
+}
+
+func handle_prover_spec_message(channel string, payload string) {
+	var pub_channel string = "binary_channel_schedule"
+	pub_info := ProveSpecMessage{Prover_id: "abc", Info: payload}
+	err := PubProSpecMsg(pub_channel, pub_info)
+	if err != nil {
+		log.Print("PublishString() error", err)
+	}
 }
